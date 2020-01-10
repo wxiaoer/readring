@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>read-everywhere</title>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <!-- <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> -->
+    <meta name="metro4:init" content="false">
+    <link rel="stylesheet" href="dependences/metro4/metro-all.min.css">
+    <style>
+        html,
+        body {
+            height: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div data-role="navview" data-expand="lg" data-compact="fs" data-active-state='true' id="app">
+        <iframe v-show='readPageShow' id="readPageIframe" height="100%" width="100%"
+            src="/dependences/pdfjs-2.3.200-dist/web/viewer.html" frameborder="0"
+            style="position: absolute;z-index: 1000;">iframe</iframe>
+        <!-- 侧边菜单 -->
+        <div class="navview-pane">
+            <button class="pull-button pos-absolute-right">
+                <span class="default-icon-menu"></span>
+            </button>
+            <div class="suggest-box">
+                <input type="text" data-role="input" data-clear-button="false" data-search-button="true">
+                <button class="holder">
+                    <span class="mif-search"></span>
+                </button>
+            </div>
+            <ul class="navview-menu">
+                <li @click="currentPage=0" :class="[currentPage===0?'active':'']">
+                    <a class="c-pointer">
+                        <span class="icon"><span class="mif-books"></span></span>
+                        <span class="caption">Book Shelf</span>
+                    </a>
+                </li>
+                <li @click="currentPage=1" @click.once="initAnalysePage" :class="[currentPage===1?'active':'']">
+                    <a class="c-pointer">
+                        <span class="icon"><span class="mif-drive"></span></span>
+                        <span class="caption">Drive</span>
+                    </a>
+                </li>
+                <li @click="currentPage=1" @click.once="initAnalysePage" :class="[currentPage===2?'active':'']">
+                    <a class="c-pointer">
+                        <span class="icon"><span class="mif-cog"></span></span>
+                        <span class="caption">Setting</span>
+                    </a>
+                </li>
+                <li @click="currentPage=3" :class="[currentPage===3?'active':'']">
+                    <a class="c-pointer">
+                        <span class="icon"><span class="mif-info"></span></span>
+                        <span class="caption">About</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- body panel -->
+        <div class="navview-content h-100 container mt-2">
+            <div class="tiles-grid">
+                <div @click="openBook(book)" data-role="tile" v-for="book in books">
+                    <!-- <div style="position: absolute;width: 100%;height: 100%;z-index: 100;opacity: 0;">
+                        <div v-if="book.syncType == 'cloud'" @click="openBook(book)" class="h-100 w-100"></div>
+                        <div v-else @click="openBook(book)" class="h-100 w-100"></div>
+                    </div> -->
+                    <div class="slide-front">
+                        <img src="images/pumba-bg.png" class="h-100 w-100">
+                    </div>
+                    <span class="branding-bar fg-dark"><span :class="iconMap[book.syncType]"></span>
+                        {{book.name}}</span>
+                    <span class="badge-top">{{book.page/book.pagesCount}}%</span>
+                </div>
+                <!-- <div data-role="tile"
+                    onclick=" window.location.href = '/dependences/pdfjs-2.3.200-dist/web/viewer.html?file=https://cqpyjg.dm.files.1drv.com/y4mz-bGTSUQlNd2sd_B7VNzBuhc4q4uHNtEyBMukMIA5o16syasUKLJhdYs2YVSFmB4kMn_ss-BuWOMaAOcrJwh1QH4FswbcuGPNXtMbOSVaTmELBSC9UYiAF0TmQ3FxjDSXDZIJmbDqpFcFl64hdnKcr7HtIWv_mWmMsxptBSEMAz2KN1uJr8mgunZ6jrH74f71pV3-hF26MnAs3w6JMhGgg/Computer%20Networking%20A%20Top-Down%20Approach%20(7th%20Edition).pdf?download&psid=1'">
+                    <div class="slide-front">
+                        <img src="images/pumba-bg.png" class="h-100 w-100">
+                    </div>
+                    <span class="branding-bar fg-dark mif-cloud"> book only in cloud</span>
+                    <span class="badge-top">10%</span>
+                </div>
+                <div data-role="tile">
+                    <div class="slide-front">
+                        <img src="images/pumba-bg.png" class="h-100 w-100">
+                    </div>
+                    <span class="branding-bar fg-dark mif-unlink"> book only in local</span>
+                    <span class="badge-top">10%</span>
+                </div>
+                <div data-role="tile">
+                    <div class="slide-front">
+                        <img src="images/pumba-bg.png" class="h-100 w-100">
+                    </div>
+                    <span class="branding-bar fg-dark mif-done"> book in sync</span>
+                    <span class="badge-top">10%</span>
+                </div> -->
+            </div>
+        </div>
+        <input type="file" name="" ref="fileInput" id="" @change='fileInputChange($event)'>
+    </div>
+</body>
+<script src="dependences/metro4/metro.min.js"></script>
+<script src="dependences/js/vue.js"></script>
+<script>
+    var app = new Vue({
+        el: '#app',
+        mounted: function () {
+            Metro.init()
+        },
+        created: function () {
+            this.books = JSON.parse(localStorage.getItem('books'))
+        },
+        data: {
+            currentPage: 0,
+            books: '',
+            iconMap: { cloud: 'mif-cloud', local: 'mif-unlink', onSync: 'mif-done' },
+            fileModel: '',
+            readPageShow: false,
+            currentReadBook: '',
+        },
+        methods: {
+            openBook: function (book) {
+                this.currentReadBook = book
+                if (book.syncType == 'cloud') {
+                    this.readPageShow = true
+                    bookHref = '/dependences/pdfjs-2.3.200-dist/web/viewer.html?file=' + book.url + "#page=" + book.page;
+                    document.getElementById("readPageIframe").src = bookHref;
+                } else {
+                    this.$refs.fileInput.dispatchEvent(new MouseEvent('click'))
+                }
+            },
+            fileInputChange: function (e) {
+                var file = e.target.files[0]
+                if (file.name == this.currentReadBook.name) {
+                    this.readPageShow = true
+                    var url = URL.createObjectURL(file)
+                    if (file.name) {
+                        url = {
+                            url: url,
+                            originalUrl: file.name
+                        }
+                    }
+                    document.getElementById("readPageIframe").contentWindow.PDFViewerApplication.open(url)
+                        .then(function () {
+                            // 防止缓存导致page未改变
+                            setTimeout(() => {
+                                document.getElementById("readPageIframe").contentWindow.PDFViewerApplication.page = app.currentReadBook.page
+                            }, 1000);
+                        })
+                    console.log(document.getElementById("readPageIframe").contentWindow.PDFViewerApplication.page)
+                } else {
+                    Metro.toast.create("Please choice correct book");
+                }
+            },
+            addBook: function (book) {
+                this.books.push(book)
+            },
+        }
+    })
+</script>
+
+</html>
