@@ -28,8 +28,6 @@ Add book to bookshelf and read in every devices with same progress.
 | :--: | ---- | ---------- | ----------- | --------- | ------------ |
 |      |      |            |             |           |              |
 
-
-
 ## Client demand:
 
 ### Outline demand:
@@ -43,12 +41,20 @@ Add book to bookshelf and read in every devices with same progress.
 ### Online demand:
 
 - read online book by url
-
 - read local book by click
 - add book to bookshelf
 - sync bookshelf to online account
+
+### Book structure
+
+|   name    | page   | pagesCount | storageType | remoteUrl | lastReadTime |
+| :-------: | ------ | ---------- | ----------- | --------- | ------------ |
+| localPath | device |            |             |           |              |
+
+
 
 # TODO list
 
 1. history record
 2. beautify ui
+3. cloud driven support

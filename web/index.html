@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>read-everywhere</title>
+    <title>Readring</title>
     <!-- Required meta tags -->
     <meta charset="utf-8">
     <!-- <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> -->
@@ -22,7 +22,7 @@
             src="/dependences/pdfjs-2.3.200-dist/web/viewer.html" frameborder="0"
             style="position: absolute;z-index: 1000;">iframe</iframe>
         <!-- 侧边菜单 -->
-        <div class="navview-pane">
+        <div class="navview-pane" style="z-index: 100;">
             <button class="pull-button pos-absolute-right">
                 <span class="default-icon-menu"></span>
             </button>
@@ -36,7 +36,7 @@
                 <li @click="currentPage=0" :class="[currentPage===0?'active':'']">
                     <a class="c-pointer">
                         <span class="icon"><span class="mif-books"></span></span>
-                        <span class="caption">Book Shelf</span>
+                        <span class="caption">Bookshelf</span>
                     </a>
                 </li>
                 <li @click="currentPage=1" @click.once="initAnalysePage" :class="[currentPage===1?'active':'']">
@@ -64,42 +64,26 @@
         <div class="navview-content h-100 container mt-2">
             <div class="tiles-grid">
                 <div @click="openBook(book)" data-role="tile" v-for="book in books">
-                    <!-- <div style="position: absolute;width: 100%;height: 100%;z-index: 100;opacity: 0;">
-                        <div v-if="book.syncType == 'cloud'" @click="openBook(book)" class="h-100 w-100"></div>
-                        <div v-else @click="openBook(book)" class="h-100 w-100"></div>
-                    </div> -->
                     <div class="slide-front">
                         <img src="images/pumba-bg.png" class="h-100 w-100">
                     </div>
-                    <span class="branding-bar fg-dark"><span :class="iconMap[book.syncType]"></span>
+                    <span class="branding-bar fg-dark"><span :class="iconMap[book.storageType]"></span>
                         {{book.name}}</span>
                     <span class="badge-top">{{book.page/book.pagesCount}}%</span>
                 </div>
-                <!-- <div data-role="tile"
-                    onclick=" window.location.href = '/dependences/pdfjs-2.3.200-dist/web/viewer.html?file=https://cqpyjg.dm.files.1drv.com/y4mz-bGTSUQlNd2sd_B7VNzBuhc4q4uHNtEyBMukMIA5o16syasUKLJhdYs2YVSFmB4kMn_ss-BuWOMaAOcrJwh1QH4FswbcuGPNXtMbOSVaTmELBSC9UYiAF0TmQ3FxjDSXDZIJmbDqpFcFl64hdnKcr7HtIWv_mWmMsxptBSEMAz2KN1uJr8mgunZ6jrH74f71pV3-hF26MnAs3w6JMhGgg/Computer%20Networking%20A%20Top-Down%20Approach%20(7th%20Edition).pdf?download&psid=1'">
-                    <div class="slide-front">
-                        <img src="images/pumba-bg.png" class="h-100 w-100">
-                    </div>
-                    <span class="branding-bar fg-dark mif-cloud"> book only in cloud</span>
-                    <span class="badge-top">10%</span>
+                <div @click="addLocalBook()" data-role="tile" class="bg-gray">
+                    <span class="icon mif-plus"></span>
+                    <span class="branding-bar">Local book</span>
+                    <span class="badge-bottom mif-file-pdf"></span>
                 </div>
-                <div data-role="tile">
-                    <div class="slide-front">
-                        <img src="images/pumba-bg.png" class="h-100 w-100">
-                    </div>
-                    <span class="branding-bar fg-dark mif-unlink"> book only in local</span>
-                    <span class="badge-top">10%</span>
+                <div @click="addOnlineBook()" data-role="tile" class="bg-gray">
+                    <span class="icon mif-plus"></span>
+                    <span class="branding-bar">Online book</span>
+                    <span class="badge-bottom mif-cloud"></span>
                 </div>
-                <div data-role="tile">
-                    <div class="slide-front">
-                        <img src="images/pumba-bg.png" class="h-100 w-100">
-                    </div>
-                    <span class="branding-bar fg-dark mif-done"> book in sync</span>
-                    <span class="badge-top">10%</span>
-                </div> -->
             </div>
         </div>
-        <input type="file" name="" ref="fileInput" id="" @change='fileInputChange($event)'>
+        <input type="file" name="" ref="fileInput" id="" @change='fileInputChange($event)' accept="application/pdf">
     </div>
 </body>
 <script src="dependences/metro4/metro.min.js"></script>
@@ -124,9 +108,10 @@
         methods: {
             openBook: function (book) {
                 this.currentReadBook = book
-                if (book.syncType == 'cloud') {
+                if (book.storageType == 'cloud') {
                     this.readPageShow = true
-                    bookHref = '/dependences/pdfjs-2.3.200-dist/web/viewer.html?file=' + book.url + "#page=" + book.page;
+                    // Must encodeurlcomponent or can't parse url
+                    bookHref = '/dependences/pdfjs-2.3.200-dist/web/viewer.html?file=' + encodeURIComponent(book.remoteUrl) + "#page=" + book.page;
                     document.getElementById("readPageIframe").src = bookHref;
                 } else {
                     this.$refs.fileInput.dispatchEvent(new MouseEvent('click'))
@@ -134,7 +119,7 @@
             },
             fileInputChange: function (e) {
                 var file = e.target.files[0]
-                if (file.name == this.currentReadBook.name) {
+                if (file.name == this.currentReadBook.name || this.currentReadBook.name == "newBook") {
                     this.readPageShow = true
                     var url = URL.createObjectURL(file)
                     if (file.name) {
@@ -152,14 +137,37 @@
                         })
                     console.log(document.getElementById("readPageIframe").contentWindow.PDFViewerApplication.page)
                 } else {
-                    Metro.toast.create("Please choice correct book");
+                    Metro.toast.create("Click book named " + this.currentReadBook.name + ", please select book with same name");
                 }
             },
-            addBook: function (book) {
-                this.books.push(book)
+            addLocalBook: function () {
+                let book = new Book('newBook','','','local','','')
+                this.openBook(book)
+            },
+            addOnlineBook: function () {
+                Metro.dialog.create({
+                    clsDialog:"light",
+                    title: "Online book url",
+                    content: '<input id="url" type="text" data-role="input">',
+                    onClose:function(){
+                        let urlString = $(url).val()
+                        let book = new Book('','','','cloud',urlString,'')
+                        app.openBook(book)
+                    }
+                });
             },
         }
     })
+
+    // book 类
+    function Book(name, page, pagesCount, storageType, remoteUrl, lastReadTime) {
+        this.name = name
+        this.page = page || 1
+        this.pagesCount = pagesCount
+        this.storageType = storageType
+        this.remoteUrl = remoteUrl
+        this.lastReadTime = lastReadTime
+    }
 </script>
 
 </html>
