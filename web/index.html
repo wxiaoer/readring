@@ -82,6 +82,13 @@
                     <span class="badge-bottom mif-cloud"></span>
                 </div>
             </div>
+            <!-- read page action panel -->
+            <div v-show="readPageShow" @click="readPageShow = false" class="pos-fixed pos-bottom-right mr-8 mb-8"
+                style="z-index: 1001;opacity: .7;">
+                <button class="action-button ">
+                    <span class="icon"><span class="mif-backspace"></span></span>
+                </button>
+            </div>
         </div>
         <input type="file" name="" ref="fileInput" id="" @change='fileInputChange($event)' accept="application/pdf">
     </div>
@@ -95,78 +102,129 @@
             Metro.init()
         },
         created: function () {
-            this.books = JSON.parse(localStorage.getItem('books'))
+            this.books = JSON.parse(localStorage.getItem('books')) || []
         },
         data: {
             currentPage: 0,
-            books: '',
-            iconMap: { cloud: 'mif-cloud', local: 'mif-unlink', onSync: 'mif-done' },
+            books: [],
+            iconMap: { cloud: 'mif-cloud', local: 'mif-unlink', both: 'mif-done' },
             fileModel: '',
             readPageShow: false,
             currentReadBook: '',
         },
+        watch: {
+            readPageShow: function (val) {
+                if (!val) {
+                    this.saveReadProgress()
+                }
+            }
+        },
         methods: {
             openBook: function (book) {
+                if (book.name != 'new' && book.name == this.currentReadBook.name) {
+                    let pdfApp = document.getElementById("readPageIframe").contentWindow.PDFViewerApplication
+                    while (!("fieldData" in pdfApp.pdfDocumentProperties)){
+                        pdfApp.pdfDocumentProperties.open()
+                        pdfApp.pdfDocumentProperties.close()
+                    }
+                    if (book.name == pdfApp.baseUrl || book.name == pdfApp.appConfig.documentProperties.fields.fileName.textContent) {
+                        this.readPageShow = true
+                        return
+                    }
+                    pdfApp.pdfDocumentProperties.close()
+                }
                 this.currentReadBook = book
                 if (book.storageType == 'cloud') {
                     this.readPageShow = true
                     // Must encodeurlcomponent or can't parse url
                     bookHref = '/dependences/pdfjs-2.3.200-dist/web/viewer.html?file=' + encodeURIComponent(book.remoteUrl) + "#page=" + book.page;
                     document.getElementById("readPageIframe").src = bookHref;
+                    document.getElementById("readPageIframe").contentWindow.PDFViewerApplication.pdfDocumentProperties.open()
                 } else {
                     this.$refs.fileInput.dispatchEvent(new MouseEvent('click'))
                 }
             },
             fileInputChange: function (e) {
                 var file = e.target.files[0]
-                if (file.name == this.currentReadBook.name || this.currentReadBook.name == "newBook") {
-                    this.readPageShow = true
-                    var url = URL.createObjectURL(file)
-                    if (file.name) {
-                        url = {
-                            url: url,
-                            originalUrl: file.name
+                if (file) {
+                    if (file.name == this.currentReadBook.name || this.currentReadBook.name == "new") {
+                        this.readPageShow = true
+                        var url = URL.createObjectURL(file)
+                        if (file.name) {
+                            url = {
+                                url: url,
+                                originalUrl: file.name
+                            }
                         }
+                        document.getElementById("readPageIframe").contentWindow.PDFViewerApplication.open(url)
+                            .then(function () {
+                                // 防止缓存导致page未改变
+                                setTimeout(() => {
+                                    document.getElementById("readPageIframe").contentWindow.PDFViewerApplication.page = app.currentReadBook.page
+                                }, 1000);
+                            })
+                        console.log(document.getElementById("readPageIframe").contentWindow.PDFViewerApplication.page)
+                    } else {
+                        Metro.toast.create("Please select " + this.currentReadBook.name, null, 3000, 'warning');
                     }
-                    document.getElementById("readPageIframe").contentWindow.PDFViewerApplication.open(url)
-                        .then(function () {
-                            // 防止缓存导致page未改变
-                            setTimeout(() => {
-                                document.getElementById("readPageIframe").contentWindow.PDFViewerApplication.page = app.currentReadBook.page
-                            }, 1000);
-                        })
-                    console.log(document.getElementById("readPageIframe").contentWindow.PDFViewerApplication.page)
-                } else {
-                    Metro.toast.create("Click book named " + this.currentReadBook.name + ", please select book with same name");
+                    this.$refs.fileInput.value = ''
                 }
             },
             addLocalBook: function () {
-                let book = new Book('newBook','','','local','','')
+                let book = new Book()
+                book.storageType = 'local'
                 this.openBook(book)
             },
             addOnlineBook: function () {
                 Metro.dialog.create({
-                    clsDialog:"light",
+                    clsDialog: "light",
                     title: "Online book url",
                     content: '<input id="url" type="text" data-role="input">',
-                    onClose:function(){
+                    onClose: function () {
                         let urlString = $(url).val()
-                        let book = new Book('','','','cloud',urlString,'')
+                        let book = new Book()
+                        book.storageType = 'cloud'
+                        book.remoteUrl = urlString
                         app.openBook(book)
                     }
                 });
+            },
+            saveReadProgress: function () {
+                if (this.currentReadBook.name == 'new') {
+                    let pdfApp = document.getElementById("readPageIframe").contentWindow.PDFViewerApplication
+                    // =为了获取文件名 TODO: 更好的获取文件名方式
+                    // pdfApp.pdfDocumentProperties.open()
+                    this.currentReadBook.name = this.currentReadBook.storageType == "cloud" ? pdfApp.appConfig.documentProperties.fields.fileName.textContent : pdfApp.baseUrl
+                    // pdfApp.pdfDocumentProperties.close()
+                    this.currentReadBook.page = pdfApp.page
+                    this.currentReadBook.pagesCount = pdfApp.pagesCount
+                    this.currentReadBook.lastReadTime = new Date().getTime()
+                    this.books.push(this.currentReadBook)
+                } else {
+                    this.currentReadBook.page = document.getElementById("readPageIframe").contentWindow.PDFViewerApplication.page
+                    this.currentReadBook.lastReadTime = new Date().getTime()
+                }
             },
         }
     })
 
     // book 类
     function Book(name, page, pagesCount, storageType, remoteUrl, lastReadTime) {
-        this.name = name
+        this.name = name || 'new'
         this.page = page || 1
         this.pagesCount = pagesCount
         this.storageType = storageType
         this.remoteUrl = remoteUrl
         this.lastReadTime = lastReadTime
+    }
+
+    // 页面关闭 保存书架状态
+    window.onbeforeunload = function (event) {
+        // event.returnValue="sdf"
+        app.saveReadProgress()
+        if (app.books.length > 0) {
+            localStorage.setItem('books', JSON.stringify(app.books))
+        }
     }
 </script>
 
