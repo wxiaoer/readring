@@ -13,15 +13,54 @@
         body {
             height: 100%;
         }
+
+        /* 页面切换动画 */
+        .blur {
+            -webkit-filter: blur(5px);
+            /* Chrome, Opera */
+            -moz-filter: blur(5px);
+            -ms-filter: blur(5px);
+            filter: blur(5px);
+        }
+
+        .fade-enter-active,
+        .fade-leave-active {
+            transition: opacity .5s;
+        }
+
+        .fade-enter,
+        .fade-leave-to {
+            opacity: 0;
+        }
+
+        .slide-fade-enter-active {
+            transition: all .2s ease;
+        }
+
+        .slide-fade-leave-active {
+            transition: all .2s cubic-bezier(1.0, 0.5, 0.8, 1.0);
+        }
+
+        .slide-fade-enter {
+            transform: translateY(10px);
+            opacity: 0;
+        }
+
+        .slide-fade-leave-to {
+            transform: translateY(-10px);
+            opacity: 0;
+        }
     </style>
 </head>
 
 <body>
     <div data-role="navview" data-expand="lg" data-compact="fs" data-active-state='true' id="app">
+        <!-- book read page frame -->
         <iframe v-show='readPageShow' id="readPageIframe" height="100%" width="100%"
             src="/dependences/pdfjs-2.3.200-dist/web/viewer.html" frameborder="0"
             style="position: absolute;z-index: 1000;">iframe</iframe>
-        <!-- 侧边菜单 -->
+
+        <!-- side meau -->
         <div class="navview-pane" style="z-index: 100;">
             <button class="pull-button pos-absolute-right">
                 <span class="default-icon-menu"></span>
@@ -45,7 +84,7 @@
                         <span class="caption">Drive</span>
                     </a>
                 </li>
-                <li @click="currentPage=1" @click.once="initAnalysePage" :class="[currentPage===2?'active':'']">
+                <li @click="currentPage=2" @click.once="initAnalysePage" :class="[currentPage===2?'active':'']">
                     <a class="c-pointer">
                         <span class="icon"><span class="mif-cog"></span></span>
                         <span class="caption">Setting</span>
@@ -61,36 +100,99 @@
         </div>
 
         <!-- body panel -->
-        <div class="navview-content h-100 container mt-2">
-            <div class="tiles-grid">
-                <div @click="openBook(book)" data-role="tile" v-for="book in books">
-                    <div class="slide-front">
-                        <img src="images/pumba-bg.png" class="h-100 w-100">
+        <div class="navview-content h-100">
+            <!-- bookshelf -->
+            <transition name="slide-fade">
+                <div class="h-100 w-100 container" v-show="currentPage === 0">
+                    <!-- book list option panel -->
+                    <div class="row mb-4">
+                        <div class="cell flex-justify-start">
+                            <button class="image-button" @click="addLocalBook()">
+                                <span class="mif-file-pdf icon"></span>
+                                <span class="caption">Open local pdf</span>
+                            </button>
+                            <button class="image-button" @click="addOnlineBook()">
+                                <span class="mif-cloud icon"></span>
+                                <span class="caption">Open cloud pdf</span>
+                            </button>
+                        </div>
+                        <div class="" v-show="selectedBooks.length>0">
+                            <div class="toolbar">
+                                <button class="tool-button primary outline" @click="toggleSelectAll"><span
+                                        class="mif-list"></span></button>
+                            </div>
+                            <div class="toolbar ">
+                                <button class="tool-button success" @click="booksRemoteUrlManage"><span
+                                        class="mif-cloudy2"></span></button>
+                                <button class="tool-button primary outline" @click="shareBooks"><span
+                                        class="mif-share"></span></button>
+                            </div>
+                            <div class="toolbar">
+                                <button class="tool-button warning" @click="deleteBooks"><span
+                                        class="mif-bin"></span></button>
+                            </div>
+                        </div>
                     </div>
-                    <span class="branding-bar fg-dark"><span :class="iconMap[book.storageType]"></span>
-                        {{book.name}}</span>
-                    <span class="badge-top">{{book.page/book.pagesCount}}%</span>
+                    <!-- book list -->
+                    <div class="tiles-grid">
+                        <div @click="openBook(book)" @contextmenu.prevent="choiceBook(book)"
+                            :class="[{selected:JSON.stringify(selectedBooks).indexOf(JSON.stringify(book))!=-1},'tile-medium']"
+                            data-role="tile" v-for="book in books">
+                            <div class="slide-front">
+                                <img src="images/pumba-bg.png" class="h-100 w-100">
+                            </div>
+                            <!-- <span class="branding-bar fg-dark"><span :class="iconMap[book.storageType]"></span> -->
+                            <span class="branding-bar fg-dark"><span :class="{ 'mif-cloud':getPDFFileNameFromURL(book.remoteUrl) }"></span>
+                                {{book.name}}</span>
+                            <span class="badge-top">{{(book.page/book.pagesCount).toFixed(2)}}%</span>
+                        </div>
+                    </div>
+                    <!-- read page action panel -->
+                    <div v-show="readPageShow" @click="readPageShow = false"
+                        class="pos-fixed pos-bottom-right mr-8 mb-8" style="z-index: 1001;opacity: .7;">
+                        <button class="action-button ">
+                            <span class="icon"><span class="mif-backspace"></span></span>
+                        </button>
+                    </div>
                 </div>
-                <div @click="addLocalBook()" data-role="tile" class="bg-gray">
-                    <span class="icon mif-plus"></span>
-                    <span class="branding-bar">Local book</span>
-                    <span class="badge-bottom mif-file-pdf"></span>
+            </transition>
+            <!-- driven -->
+            <transition name="slide-fade">
+                <div class="h-100 w-100" v-show="currentPage === 1">
+                    <h1>Driven option coming soon</h1>
                 </div>
-                <div @click="addOnlineBook()" data-role="tile" class="bg-gray">
-                    <span class="icon mif-plus"></span>
-                    <span class="branding-bar">Online book</span>
-                    <span class="badge-bottom mif-cloud"></span>
+            </transition>
+            <!-- setting -->
+            <transition name="slide-fade">
+                <div class="h-100 w-100" v-show="currentPage === 2">
+                    <h1>Setting option coming soon</h1>
+                </div>
+            </transition>
+            <!-- about -->
+            <transition name="slide-fade">
+                <div class="h-100 w-100" v-show="currentPage === 3">
+                    <h1>About option coming soon</h1>
+                </div>
+            </transition>
+
+        </div>
+        <!-- local file input -->
+        <input type="file" name="" ref="fileInput" id="" @change='fileInputChange($event)' accept="application/pdf">
+        <!-- upload cloud dialog -->
+        <div class="dialog" data-role="dialog" id="booksRemoteUrlManageDialog">
+            <div class="dialog-title">Books remote url manage</div>
+            <div class="dialog-content">
+                <div v-for="book in editSelectedBooks">
+                    <p>{{book.name}} <span v-if="getPDFFileNameFromURL(book.remoteUrl)"><a :href="book.remoteUrl"
+                                class="mif-cloud-download"></a></span></p>
+                    <input type="text" data-role="input" v-model="book.remoteUrl" onchange="$(this)[0].dispatchEvent(new Event('input'));">
                 </div>
             </div>
-            <!-- read page action panel -->
-            <div v-show="readPageShow" @click="readPageShow = false" class="pos-fixed pos-bottom-right mr-8 mb-8"
-                style="z-index: 1001;opacity: .7;">
-                <button class="action-button ">
-                    <span class="icon"><span class="mif-backspace"></span></span>
-                </button>
+            <div class="dialog-actions">
+                <button class="button js-dialog-close">Cancel</button>
+                <button class="button primary" :click="updateRemoteUrlInfo">Submit</button>
             </div>
         </div>
-        <input type="file" name="" ref="fileInput" id="" @change='fileInputChange($event)' accept="application/pdf">
     </div>
 </body>
 <script src="dependences/metro4/metro.min.js"></script>
@@ -107,7 +209,9 @@
         data: {
             currentPage: 0,
             books: [],
-            iconMap: { cloud: 'mif-cloud', local: 'mif-unlink', both: 'mif-done' },
+            selectedBooks: [],
+            editSelectedBooks:[],
+            iconMap: { cloud: 'mif-cloud', local: 'mif-unlink', both: 'mif-cloud fg-lightGreen' },
             fileModel: '',
             readPageShow: false,
             currentReadBook: '',
@@ -121,25 +225,20 @@
         },
         methods: {
             openBook: function (book) {
-                if (book.name != 'new' && book.name == this.currentReadBook.name) {
-                    let pdfApp = document.getElementById("readPageIframe").contentWindow.PDFViewerApplication
-                    while (!("fieldData" in pdfApp.pdfDocumentProperties)){
-                        pdfApp.pdfDocumentProperties.open()
-                        pdfApp.pdfDocumentProperties.close()
-                    }
-                    if (book.name == pdfApp.baseUrl || book.name == pdfApp.appConfig.documentProperties.fields.fileName.textContent) {
-                        this.readPageShow = true
-                        return
-                    }
-                    pdfApp.pdfDocumentProperties.close()
-                }
+                // if (book.name != 'new' && book.name == this.currentReadBook.name) {
+                //     let pdfApp = document.getElementById("readPageIframe").contentWindow.PDFViewerApplication
+                //     if (book.name == pdfApp.baseUrl || book.name == pdfApp.appConfig.documentProperties.fields.fileName.textContent) {
+                //         this.readPageShow = true
+                //         return
+                //     }
+                //     pdfApp.pdfDocumentProperties.close()
+                // }
                 this.currentReadBook = book
                 if (book.storageType == 'cloud') {
+                    // Warning: Must encodeurlcomponent or can't parse url
+                    bookHref = '/dependences/pdfjs-2.3.200-dist/web/viewer.html?file=' + encodeURIComponent(book.remoteUrl) + "#page=" + book.page
+                    document.getElementById("readPageIframe").src = bookHref
                     this.readPageShow = true
-                    // Must encodeurlcomponent or can't parse url
-                    bookHref = '/dependences/pdfjs-2.3.200-dist/web/viewer.html?file=' + encodeURIComponent(book.remoteUrl) + "#page=" + book.page;
-                    document.getElementById("readPageIframe").src = bookHref;
-                    document.getElementById("readPageIframe").contentWindow.PDFViewerApplication.pdfDocumentProperties.open()
                 } else {
                     this.$refs.fileInput.dispatchEvent(new MouseEvent('click'))
                 }
@@ -163,9 +262,8 @@
                                     document.getElementById("readPageIframe").contentWindow.PDFViewerApplication.page = app.currentReadBook.page
                                 }, 1000);
                             })
-                        console.log(document.getElementById("readPageIframe").contentWindow.PDFViewerApplication.page)
                     } else {
-                        Metro.toast.create("Please select " + this.currentReadBook.name, null, 3000, 'warning');
+                        Metro.toast.create("Please select " + this.currentReadBook.name, null, 3000, 'warning')
                     }
                     this.$refs.fileInput.value = ''
                 }
@@ -182,20 +280,21 @@
                     content: '<input id="url" type="text" data-role="input">',
                     onClose: function () {
                         let urlString = $(url).val()
-                        let book = new Book()
-                        book.storageType = 'cloud'
-                        book.remoteUrl = urlString
-                        app.openBook(book)
+                        if (urlString && this.getPDFFileNameFromURL(urlString)) {
+                            let book = new Book()
+                            book.storageType = 'cloud'
+                            book.remoteUrl = urlString
+                            app.openBook(book)
+                        } else {
+                            Metro.toast.create("Please input downloadable url ", null, 3000, 'warning');
+                        }
                     }
                 });
             },
             saveReadProgress: function () {
                 if (this.currentReadBook.name == 'new') {
                     let pdfApp = document.getElementById("readPageIframe").contentWindow.PDFViewerApplication
-                    // =为了获取文件名 TODO: 更好的获取文件名方式
-                    // pdfApp.pdfDocumentProperties.open()
-                    this.currentReadBook.name = this.currentReadBook.storageType == "cloud" ? pdfApp.appConfig.documentProperties.fields.fileName.textContent : pdfApp.baseUrl
-                    // pdfApp.pdfDocumentProperties.close()
+                    this.currentReadBook.name = this.currentReadBook.storageType == "cloud" ? this.getPDFFileNameFromURL(pdfApp.url) : pdfApp.url
                     this.currentReadBook.page = pdfApp.page
                     this.currentReadBook.pagesCount = pdfApp.pagesCount
                     this.currentReadBook.lastReadTime = new Date().getTime()
@@ -204,11 +303,136 @@
                     this.currentReadBook.page = document.getElementById("readPageIframe").contentWindow.PDFViewerApplication.page
                     this.currentReadBook.lastReadTime = new Date().getTime()
                 }
+                this.currentReadBook = ''
+            },
+            choiceBook: function (book) {
+                if (this.selectedBooks.indexOf(book) == -1) {
+                    this.selectedBooks.push(book)
+                } else {
+                    this.selectedBooks.splice(this.selectedBooks.indexOf(book), 1)
+                }
+            },
+            toggleSelectAll: function () {
+                if (this.books.length != this.selectedBooks.length) {
+                    this.selectedBooks = []
+                    for (book of this.books) {
+                        this.selectedBooks.push(book)
+                    }
+                } else {
+                    this.selectedBooks = []
+                }
+            },
+            deleteBooks: function () {
+                for (book of this.selectedBooks) {
+                    this.selectedBooks.splice(this.selectedBooks.indexOf(book), 1)
+                    if (this.books.indexOf(book) != -1) {
+                        this.books.splice(this.books.indexOf(book), 1)
+                    }
+                }
+            },
+            shareBooks: function () {
+                // TODO: share books to public repository
+                Metro.toast.create("Share " + this.selectedBooks.length + " books success", null, 2000, "success")
+            },
+            booksRemoteUrlManage: function () {
+                this.editSelectedBooks = JSON.parse(JSON.stringify(this.selectedBooks))
+                Metro.dialog.open('#booksRemoteUrlManageDialog')
+            },
+            updateRemoteUrlInfo:function(){
+                for (book of this.editSelectedBooks){
+                    if (this.getPDFFileNameFromURL(book.remoteUrl) && this.getPDFFileNameFromURL(book.remoteUrl) == book.name){
+                        this.selectedBooks.indexOf()
+                        // TODO: find index of book in selectedBook and update book info to books
+                    }
+                }
+            },
+            getPDFFileNameFromURL: function (url) {
+                var defaultFilename = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+
+                if (typeof url !== 'string') {
+                    return defaultFilename;
+                }
+
+                if (isDataSchema(url)) {
+                    console.warn('getPDFFileNameFromURL: ' + 'ignoring "data:" URL for performance reasons.');
+                    return defaultFilename;
+                }
+
+                var reURI = /^(?:(?:[^:]+:)?\/\/[^\/]+)?([^?#]*)(\?[^#]*)?(#.*)?$/;
+                var reFilename = /[^\/?#=]+\.pdf\b(?!.*\.pdf\b)/i;
+                var splitURI = reURI.exec(url);
+                var suggestedFilename = reFilename.exec(splitURI[1]) || reFilename.exec(splitURI[2]) || reFilename.exec(splitURI[3]);
+
+                if (suggestedFilename) {
+                    suggestedFilename = suggestedFilename[0];
+
+                    if (suggestedFilename.includes('%')) {
+                        try {
+                            suggestedFilename = reFilename.exec(decodeURIComponent(suggestedFilename))[0];
+                        } catch (ex) { }
+                    }
+                }
+
+                return suggestedFilename || defaultFilename;
             },
         }
     })
 
-    // book 类
+    // get pdf url filename
+    function isDataSchema(url) {
+        var i = 0,
+            ii = url.length;
+
+        while (i < ii && url[i].trim() === '') {
+            i++;
+        }
+
+        return url.substring(i, i + 5).toLowerCase() === 'data:';
+    }
+
+    // function getPDFFileNameFromURL(url) {
+    //     var defaultFilename = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+
+    //     if (typeof url !== 'string') {
+    //         return defaultFilename;
+    //     }
+
+    //     if (isDataSchema(url)) {
+    //         console.warn('getPDFFileNameFromURL: ' + 'ignoring "data:" URL for performance reasons.');
+    //         return defaultFilename;
+    //     }
+
+    //     var reURI = /^(?:(?:[^:]+:)?\/\/[^\/]+)?([^?#]*)(\?[^#]*)?(#.*)?$/;
+    //     var reFilename = /[^\/?#=]+\.pdf\b(?!.*\.pdf\b)/i;
+    //     var splitURI = reURI.exec(url);
+    //     var suggestedFilename = reFilename.exec(splitURI[1]) || reFilename.exec(splitURI[2]) || reFilename.exec(splitURI[3]);
+
+    //     if (suggestedFilename) {
+    //         suggestedFilename = suggestedFilename[0];
+
+    //         if (suggestedFilename.includes('%')) {
+    //             try {
+    //                 suggestedFilename = reFilename.exec(decodeURIComponent(suggestedFilename))[0];
+    //             } catch (ex) { }
+    //         }
+    //     }
+
+    //     return suggestedFilename || defaultFilename;
+    // }
+
+    // download file
+    function downloadFile(url) {
+        const iframe = document.createElement("iframe");
+        iframe.style.display = "none"; // 防止影响页面
+        iframe.style.height = 0; // 防止影响页面
+        iframe.src = url;
+        document.body.appendChild(iframe); // 这一行必须，iframe挂在到dom树上才会发请求
+        setTimeout(() => {
+            iframe.remove();
+        }, 60 * 1000);
+    }
+
+    // book class
     function Book(name, page, pagesCount, storageType, remoteUrl, lastReadTime) {
         this.name = name || 'new'
         this.page = page || 1
@@ -218,12 +442,14 @@
         this.lastReadTime = lastReadTime
     }
 
-    // 页面关闭 保存书架状态
+    // save read prograss when page closed or refresh
     window.onbeforeunload = function (event) {
         // event.returnValue="sdf"
         app.saveReadProgress()
         if (app.books.length > 0) {
             localStorage.setItem('books', JSON.stringify(app.books))
+        } else {
+            localStorage.setItem('books', "[]")
         }
     }
 </script>
