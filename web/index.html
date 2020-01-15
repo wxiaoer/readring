@@ -58,7 +58,7 @@
         <!-- book read page frame -->
         <iframe v-show='readPageShow' id="readPageIframe" height="100%" width="100%"
             src="/dependences/pdfjs-2.3.200-dist/web/viewer.html" frameborder="0"
-            style="position: absolute;z-index: 1000;">iframe</iframe>
+            style="position: absolute;top:0;z-index: 1000;">iframe</iframe>
 
         <!-- side meau -->
         <div class="navview-pane" style="z-index: 100;">
@@ -142,7 +142,8 @@
                                 <img src="images/pumba-bg.png" class="h-100 w-100">
                             </div>
                             <!-- <span class="branding-bar fg-dark"><span :class="iconMap[book.storageType]"></span> -->
-                            <span class="branding-bar fg-dark"><span :class="{ 'mif-cloud':getPDFFileNameFromURL(book.remoteUrl) }"></span>
+                            <span class="branding-bar fg-dark"><span
+                                    :class="{ 'mif-cloud':getPDFFileNameFromURL(book.remoteUrl) }"></span>
                                 {{book.name}}</span>
                             <span class="badge-top">{{(book.page/book.pagesCount).toFixed(2)}}%</span>
                         </div>
@@ -185,7 +186,8 @@
                 <div v-for="book in editSelectedBooks">
                     <p>{{book.name}} <span v-if="getPDFFileNameFromURL(book.remoteUrl)"><a :href="book.remoteUrl"
                                 class="mif-cloud-download"></a></span></p>
-                    <input type="text" data-role="input" v-model="book.remoteUrl" onchange="$(this)[0].dispatchEvent(new Event('input'));">
+                    <input type="text" data-role="input" v-model="book.remoteUrl"
+                        onchange="$(this)[0].dispatchEvent(new Event('input'));">
                 </div>
             </div>
             <div class="dialog-actions">
@@ -197,8 +199,8 @@
 </body>
 <script src="dependences/metro4/metro.min.js"></script>
 <script src="dependences/js/vue.js"></script>
-<script src="dependences/js/jquery-3.4.1.min.js"></script>
-<script src="dependences/js/layer-v3.1.1/layer/layer.js"></script>
+<!-- <script src="dependences/js/jquery-3.4.1.min.js"></script>
+<script src="dependences/js/layer-v3.1.1/layer/"></script> -->
 <script>
     var app = new Vue({
         el: '#app',
@@ -212,10 +214,11 @@
             currentPage: 0,
             books: [],
             selectedBooks: [],
-            editSelectedBooks:[],
+            editSelectedBooks: [],
             iconMap: { cloud: 'mif-cloud', local: 'mif-unlink', both: 'mif-cloud fg-lightGreen' },
             fileModel: '',
             readPageShow: false,
+            readPageIframe: "",
             currentReadBook: '',
         },
         watch: {
@@ -227,14 +230,6 @@
         },
         methods: {
             openBook: function (book) {
-                // if (book.name != 'new' && book.name == this.currentReadBook.name) {
-                //     let pdfApp = document.getElementById("readPageIframe").contentWindow.PDFViewerApplication
-                //     if (book.name == pdfApp.baseUrl || book.name == pdfApp.appConfig.documentProperties.fields.fileName.textContent) {
-                //         this.readPageShow = true
-                //         return
-                //     }
-                //     pdfApp.pdfDocumentProperties.close()
-                // }
                 this.currentReadBook = book
                 if (book.storageType == 'cloud') {
                     // Warning: Must encodeurlcomponent or can't parse url
@@ -340,9 +335,9 @@
                 this.editSelectedBooks = JSON.parse(JSON.stringify(this.selectedBooks))
                 Metro.dialog.open('#booksRemoteUrlManageDialog')
             },
-            updateRemoteUrlInfo:function(){
-                for (book of this.editSelectedBooks){
-                    if (this.getPDFFileNameFromURL(book.remoteUrl) && this.getPDFFileNameFromURL(book.remoteUrl) == book.name){
+            updateRemoteUrlInfo: function () {
+                for (book of this.editSelectedBooks) {
+                    if (this.getPDFFileNameFromURL(book.remoteUrl) && this.getPDFFileNameFromURL(book.remoteUrl) == book.name) {
                         this.selectedBooks.indexOf()
                         // TODO: find index of book in selectedBook and update book info to books
                     }
