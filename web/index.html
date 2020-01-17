@@ -109,26 +109,26 @@
                         <div class="cell flex-justify-start">
                             <button class="image-button" @click="addLocalBook()">
                                 <span class="mif-file-pdf icon"></span>
-                                <span class="caption">Open local pdf</span>
+                                <span class="caption">Add local pdf</span>
                             </button>
                             <button class="image-button" @click="addOnlineBook()">
                                 <span class="mif-cloud icon"></span>
-                                <span class="caption">Open cloud pdf</span>
+                                <span class="caption">Add cloud pdf</span>
                             </button>
                         </div>
                         <div class="" v-show="selectedBooks.length>0">
                             <div class="toolbar">
-                                <button class="tool-button primary outline" @click="toggleSelectAll"><span
+                                <button class="tool-button primary outline" @click="toggleSelectAll" data-role="hint" data-hint-text="Toggle select all" data-hint-position="bottom"><span
                                         class="mif-list"></span></button>
                             </div>
                             <div class="toolbar ">
-                                <button class="tool-button success" @click="booksRemoteUrlManage"><span
-                                        class="mif-cloudy2"></span></button>
-                                <button class="tool-button primary outline" @click="shareBooks"><span
+                                <button class="tool-button success" @click="booksRemoteUrlManage" data-role="hint" data-hint-text="Manage cloud source" data-hint-position="bottom"><span
+                                        class="mif-cloudy2" ></span></button>
+                                <button class="tool-button primary outline" @click="shareBooks"  data-role="hint" data-hint-text="Share books to others" data-hint-position="bottom"><span
                                         class="mif-share"></span></button>
                             </div>
                             <div class="toolbar">
-                                <button class="tool-button warning" @click="deleteBooks"><span
+                                <button class="tool-button warning" @click="deleteBooks"  data-role="hint" data-hint-text="Delete books from bookshelf" data-hint-position="bottom"><span
                                         class="mif-bin"></span></button>
                             </div>
                         </div>
@@ -142,8 +142,7 @@
                                 <img src="images/pumba-bg.png" class="h-100 w-100">
                             </div>
                             <!-- <span class="branding-bar fg-dark"><span :class="iconMap[book.storageType]"></span> -->
-                            <span class="branding-bar fg-dark"><span
-                                    :class="{ 'mif-cloud':getPDFFileNameFromURL(book.remoteUrl) }"></span>
+                            <span class="branding-bar fg-dark"><span :class="iconMap[book.storageType]"></span>
                                 {{book.name}}</span>
                             <span class="badge-top">{{(book.page/book.pagesCount).toFixed(2)}}%</span>
                         </div>
@@ -184,8 +183,13 @@
             <div class="dialog-title">Books remote url manage</div>
             <div class="dialog-content">
                 <div v-for="book in editSelectedBooks">
-                    <p>{{book.name}} <span v-if="getPDFFileNameFromURL(book.remoteUrl)"><a :href="book.remoteUrl"
-                                class="mif-cloud-download"></a></span></p>
+                    <p>{{book.name}}
+                        <span v-if="getPDFFileNameFromURL(book.remoteUrl)">
+                            <a :href="book.remoteUrl" class="mif-cloud-download" data-role="hint" data-hint-text="Download book to local"></a>
+                            <a href="#" class="mif-eye  js-dialog-close" @click="openBookByRemoteUrl(book)" data-role="hint" data-hint-text="Open book by remote url"></a>
+                            <a href="#" data-role="hint" data-hint-text="Already storaged in device"><input type="checkbox" data-role="switch"  data-material="true" :checked='book.storageType=="both"'></a>
+                        </span>
+                    </p>
                     <input type="text" data-role="input" v-model="book.remoteUrl"
                         onchange="$(this)[0].dispatchEvent(new Event('input'));">
                 </div>
@@ -208,14 +212,15 @@
             Metro.init()
         },
         created: function () {
-            this.books = JSON.parse(localStorage.getItem('books')) || []
+            this.books = JSON.parse(localStorage.getItem('bookring.books')) || []
+            let userInfo = JSON.parse(localStorage.getItem('bookring.userInfo'))
         },
         data: {
             currentPage: 0,
             books: [],
             selectedBooks: [],
             editSelectedBooks: [],
-            iconMap: { cloud: 'mif-cloud', local: 'mif-unlink', both: 'mif-cloud fg-lightGreen' },
+            iconMap: { cloud: 'mif-cloud', local: 'mif-file-pdf', both: 'mif-cloud fg-lightGreen' },
             fileModel: '',
             readPageShow: false,
             readPageIframe: "",
@@ -230,15 +235,37 @@
         },
         methods: {
             openBook: function (book) {
+                if (book.name == document.getElementById("readPageIframe").contentWindow.PDFViewerApplication.url || book.remoteUrl == document.getElementById("readPageIframe").contentWindow.PDFViewerApplication.url) {
+                    this.currentReadBook = book
+                    this.readPageShow = true
+                    return
+                }
                 this.currentReadBook = book
                 if (book.storageType == 'cloud') {
                     // Warning: Must encodeurlcomponent or can't parse url
-                    bookHref = '/dependences/pdfjs-2.3.200-dist/web/viewer.html?file=' + encodeURIComponent(book.remoteUrl) + "#page=" + book.page
-                    document.getElementById("readPageIframe").src = bookHref
-                    this.readPageShow = true
+                    // bookHref = '/dependences/pdfjs-2.3.200-dist/web/viewer.html?file=' + encodeURIComponent(book.remoteUrl) + "#page=" + book.page
+                    // document.getElementById("readPageIframe").contentWindow.location.reload(true)
+                    // document.getElementById("readPageIframe").src = bookHref
+                    // //防止缓存导致page未改变
+                    // setTimeout(() => {
+                    //     document.getElementById("readPageIframe").contentWindow.PDFViewerApplication.page = app.currentReadBook.page
+                    // }, 1000);
+                    // this.readPageShow = true
+                    this.openBookByRemoteUrl(book)
                 } else {
                     this.$refs.fileInput.dispatchEvent(new MouseEvent('click'))
                 }
+            },
+            openBookByRemoteUrl: function (book) {
+                // Warning: Must encodeurlcomponent or can't parse url
+                bookHref = '/dependences/pdfjs-2.3.200-dist/web/viewer.html?file=' + encodeURIComponent(book.remoteUrl) + "#page=" + book.page
+                document.getElementById("readPageIframe").contentWindow.location.reload(true)
+                document.getElementById("readPageIframe").src = bookHref
+                //防止缓存导致page未改变
+                setTimeout(() => {
+                    document.getElementById("readPageIframe").contentWindow.PDFViewerApplication.page = app.currentReadBook.page
+                }, 1000);
+                this.readPageShow = true
             },
             fileInputChange: function (e) {
                 var file = e.target.files[0]
@@ -254,7 +281,7 @@
                         }
                         document.getElementById("readPageIframe").contentWindow.PDFViewerApplication.open(url)
                             .then(function () {
-                                // 防止缓存导致page未改变
+                                //防止缓存导致page未改变
                                 setTimeout(() => {
                                     document.getElementById("readPageIframe").contentWindow.PDFViewerApplication.page = app.currentReadBook.page
                                 }, 1000);
@@ -277,7 +304,7 @@
                     content: '<input id="url" type="text" data-role="input">',
                     onClose: function () {
                         let urlString = $(url).val()
-                        if (urlString && this.getPDFFileNameFromURL(urlString)) {
+                        if (urlString && app.getPDFFileNameFromURL(urlString)) {
                             let book = new Book()
                             book.storageType = 'cloud'
                             book.remoteUrl = urlString
@@ -300,7 +327,7 @@
                     this.currentReadBook.page = document.getElementById("readPageIframe").contentWindow.PDFViewerApplication.page
                     this.currentReadBook.lastReadTime = new Date().getTime()
                 }
-                this.currentReadBook = ''
+                // this.currentReadBook = ''
             },
             choiceBook: function (book) {
                 if (this.selectedBooks.indexOf(book) == -1) {
@@ -444,9 +471,9 @@
         // event.returnValue="sdf"
         app.saveReadProgress()
         if (app.books.length > 0) {
-            localStorage.setItem('books', JSON.stringify(app.books))
+            localStorage.setItem('bookring.books', JSON.stringify(app.books))
         } else {
-            localStorage.setItem('books', "[]")
+            localStorage.setItem('bookring.books', "[]")
         }
     }
 </script>
